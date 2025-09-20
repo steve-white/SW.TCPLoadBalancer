@@ -6,7 +6,7 @@
     <RootNamespace>SW.TCPLoadBalancer.Server</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>IDE0028</NoWarn>
+    <NoWarn>IDE0028,IDE0057</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,6 +23,14 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="C:\code\SW.TCPLoadBalancer\SW.TCPLoadBalancer.Server\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="C:\code\SW.TCPLoadBalancer\SW.TCPLoadBalancer.Server\.editorconfig" />
   </ItemGroup>
 
 </Project>

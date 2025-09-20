@@ -32,7 +32,7 @@ public partial class FakeBackendServer(int id, int port)
                     var tcpClient = await _listener.AcceptTcpClientAsync();
 
                     var clientHandler = new ClientHandler(tcpClient, _id);
-                    Clients.TryAdd(tcpClient.Client.RemoteEndPoint?.ToString(), clientHandler);
+                    Clients.TryAdd(tcpClient.Client.RemoteEndPoint?.ToString()!, clientHandler);
                     Log.Information("[FakeBackend-{id}] Client connected to backend. Count: {count}", _id, Clients.Count);
                     _ = Task.Run(async () => await clientHandler.HandleAsync());
                 }

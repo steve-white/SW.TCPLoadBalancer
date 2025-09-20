@@ -3,11 +3,9 @@
 namespace SW.TCPLoadBalancer.Server.Workers;
 
 public class ServerWorker(ILogger<ServerWorker> logger,
-    IHostApplicationLifetime hostLifetime,
     ITCPServer server) : BackgroundService
 {
     private readonly ILogger<ServerWorker> _logger = logger;
-    private readonly IHostApplicationLifetime _hostLifetime = hostLifetime;
     private readonly ITCPServer _server = server;
 
     protected override Task ExecuteAsync(CancellationToken cancelToken)

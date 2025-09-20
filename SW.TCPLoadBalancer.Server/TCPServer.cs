@@ -7,7 +7,7 @@ using SW.TCPLoadBalancer.Server.Registry;
 using System.Net;
 using System.Net.Sockets;
 
-namespace SW.TCPLoadBalancer;
+namespace SW.TCPLoadBalancer.Server;
 
 public interface ITCPServer
 {
@@ -18,7 +18,6 @@ public class TCPServer(ILogger<TCPServer> logger,
     IServiceProvider serviceProvider,
     IConnectionsOutWatchdog connectionsOutManager,
     IConnectionsInRegistry connectionsInRegistry,
-    //IConnectionsOutRegistry _connectionsOutRegistry,
     IOptions<ServerOptions> serverOptions) : ITCPServer, IAsyncDisposable
 {
     private readonly ILogger<TCPServer> _logger = logger;
@@ -31,12 +30,7 @@ public class TCPServer(ILogger<TCPServer> logger,
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await _connectionsOutManager.StartWatchdogAsync(); // start async connection managers to backend servers
-
-        // We could wait for all configured backend connections to be available and throw if timeout.
-        // In the interests of deadline time, we won't do this here.
-        //await _connectionsOutManager.WaitForReadyConnectionsAsync(cancellationToken); 
-
+        await _connectionsOutManager.StartWatchdogAsync(); // start async connection watchdog to backend servers
         _listener = StartListener(); // start listening for incoming connections
         await AcceptLoopAsync(_listener, cancellationToken); // start accepting incoming connections
     }
@@ -64,13 +58,12 @@ public class TCPServer(ILogger<TCPServer> logger,
 
     private async Task AcceptLoopAsync(TcpListener listener, CancellationToken stopToken)
     {
-        var endPoint = (IPEndPoint)listener.LocalEndpoint;
+        _ = (IPEndPoint)listener.LocalEndpoint;
         while (!stopToken.IsCancellationRequested)
         {
-            TcpClient? tcpClient = null;
             try
             {
-                tcpClient = await listener.AcceptTcpClientAsync(stopToken);
+                TcpClient? tcpClient = await listener.AcceptTcpClientAsync(stopToken);
                 tcpClient.SetOptions(_serverOptions);
 
                 var inClientHandler = _serviceProvider.GetRequiredService<ConnectionInManager>();
@@ -78,7 +71,7 @@ public class TCPServer(ILogger<TCPServer> logger,
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Problem accepting connection: {ex.Message}");
+                _logger.LogError(ex, $"Problem accepting connection");
             }
         }
     }
@@ -95,11 +88,12 @@ public class TCPServer(ILogger<TCPServer> logger,
         {
             _logger.LogError(ex, "Error stopping the listener.");
         }
+        GC.SuppressFinalize(this);
     }
 
     public async Task CloseConnectionsInAsync()
     {
-        foreach ((var key, var connection) in _connectionsInRegistry.ActiveConnections)
+        foreach ((_, var connection) in _connectionsInRegistry.ActiveConnections)
         {
             await connection.DisposeAsync();
         }

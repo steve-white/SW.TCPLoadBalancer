@@ -5,19 +5,19 @@ using System.Text;
 
 namespace SW.TCPLoadBalancer.Tests.Integration.Fakes;
 
-public class TCPClient(ILogger<TCPClient> logger,
-    TcpClient tcpClient)
+public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient)
 {
     private readonly ILogger<TCPClient> _logger = logger;
     private readonly List<byte> _receivedData = new();
     private readonly object _dataLock = new();
+    private readonly TcpClient _tcpClient = tcpClient;
 
     public TcpClient Client { get; } = tcpClient;
 
     public async Task SendAsync(byte[] data, int offset, int count)
     {
-        var stream = Client.GetStream();
-        await stream.WriteAsync(data, offset, count);
+        var stream = _tcpClient.GetStream();
+        await stream.WriteAsync(data.AsMemory(offset, count));
         await stream.FlushAsync();
     }
 
@@ -30,7 +30,7 @@ public class TCPClient(ILogger<TCPClient> logger,
     public void Stop()
     {
         Log.Debug("Stopping TCP client");
-        Client?.Close();
+        _tcpClient?.Close();
     }
 
     public string GetMessage()
@@ -50,17 +50,17 @@ public class TCPClient(ILogger<TCPClient> logger,
 
             try
             {
-                using var stream = Client.GetStream();
+                using var stream = _tcpClient.GetStream();
 
-                while (Client.Connected)
+                while (_tcpClient.Connected)
                 {
-                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    var bytesRead = await stream.ReadAsync(buffer);
 
                     if (bytesRead == 0)
                         break;
 
                     _logger.LogInformation("[{ip}] Client received: '{txt}'",
-                        tcpClient.Client.RemoteEndPoint?.ToString(), Encoding.UTF8.GetString(buffer, 0, bytesRead));
+                        _tcpClient.Client.RemoteEndPoint?.ToString(), Encoding.UTF8.GetString(buffer, 0, bytesRead));
                     lock (_dataLock)
                     {
                         _receivedData.AddRange(buffer.Take(bytesRead));
@@ -74,8 +74,8 @@ public class TCPClient(ILogger<TCPClient> logger,
             {
                 try
                 {
-                    Client?.Close();
-                    Client?.Dispose();
+                    _tcpClient?.Close();
+                    _tcpClient?.Dispose();
                 }
                 catch (Exception)
                 {

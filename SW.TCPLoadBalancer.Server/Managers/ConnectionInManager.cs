@@ -43,7 +43,7 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Problem processing connection: {ex.Message}");
+            _logger.LogError(ex, $"Problem processing connection");
         }
         finally
         {
@@ -125,6 +125,7 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
             _connectionsInRegistry.RemoveConnection(_remoteEndpoint);
         }
         await _closeWait.WaitAsync();
+        GC.SuppressFinalize(this);
     }
 
     public async Task SendAsync(SendState sendState, byte[] buffer, int bytesRead)

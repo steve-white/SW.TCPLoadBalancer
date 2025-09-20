@@ -4,19 +4,6 @@ namespace SW.TCPLoadBalancer.Server.Extensions;
 
 public static class SocketExtensions
 {
-    // TODO remove?
-    public static bool IsConnected(this Socket socket)
-    {
-        try
-        {
-            return !(socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
-        }
-        catch (SocketException)
-        {
-            return false;
-        }
-    }
-
     public static string GetSocketKey(this Socket socket)
     {
         // Can throw disposed

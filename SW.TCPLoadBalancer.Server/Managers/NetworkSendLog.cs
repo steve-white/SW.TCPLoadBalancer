@@ -1,6 +1,5 @@
 ﻿using SW.TCPLoadBalancer.Server.Abstractions;
 using SW.TCPLoadBalancer.Server.DTOs;
-using SW.TCPLoadBalancer.Server.Helpers;
 using System.Text;
 
 namespace SW.TCPLoadBalancer.Server.Managers;
@@ -22,6 +21,7 @@ public class NetworkSendLog(ILogger<NetworkSendLog> log) : INetworkClient, ILogN
     public ValueTask DisposeAsync()
     {
         log.LogDebug("Dispose client");
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 }

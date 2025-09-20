@@ -7,7 +7,6 @@ using Serilog;
 using SW.TCPLoadBalancer.Server.Extensions;
 using SW.TCPLoadBalancer.Server.Registry;
 using SW.TCPLoadBalancer.Tests.Integration.Fakes;
-using System.Collections.ObjectModel;
 using System.Net.Sockets;
 
 namespace SW.TCPLoadBalancer.Tests.Integration;
@@ -18,8 +17,8 @@ public class ServerTests : IDisposable
     private readonly IHost _sut;
     private readonly Dictionary<int, FakeBackendServer> backends = new();
     private readonly Dictionary<int, TCPClient> clients = new();
-    private IConnectionsInRegistry _connectionsInRegistry;
-    private IConnectionsOutRegistry _connectionsOutRegistry;
+    private IConnectionsInRegistry? _connectionsInRegistry;
+    private IConnectionsOutRegistry? _connectionsOutRegistry;
 
     public ServerTests()
     {
@@ -134,7 +133,7 @@ public class ServerTests : IDisposable
 
     #region Helpers
 
-    private async Task SendClientMessageConsumeErrorAsync(TCPClient client, string txt)
+    private static async Task SendClientMessageConsumeErrorAsync(TCPClient client, string txt)
     {
         try
         {
@@ -143,20 +142,18 @@ public class ServerTests : IDisposable
         catch (Exception) { }
     }
 
-
-    private FakeBackendServer.ClientHandler? GetBackendReceivedData(List<FakeBackendServer.ClientHandler> clientBackendConnections, string txtExpected)
+    private static FakeBackendServer.ClientHandler? GetBackendReceivedData(List<FakeBackendServer.ClientHandler> clientBackendConnections, string txtExpected)
     {
         foreach (var backend in clientBackendConnections)
         {
             var txt = backend.GetReceivedText();
-            //Log.Debug("Backend {id} alltxt: '{txt}'", "", txt);
             if (txt.Contains(txtExpected))
                 return (backend);
             // TODO assert other backends have explicitly not received this data
         }
         return null;
     }
-    private async Task WaitForMatchAsync(string alias, Func<bool> expr, int waitTimeoutMs = 20000) // TODO reduce
+    private static async Task WaitForMatchAsync(string alias, Func<bool> expr, int waitTimeoutMs = 2000)
     {
         var endTime = DateTime.UtcNow.AddMilliseconds(waitTimeoutMs);
         while (DateTime.UtcNow < endTime)
@@ -164,11 +161,11 @@ public class ServerTests : IDisposable
             if (expr.Invoke()) return;
             await Task.Delay(500);
         }
-        throw new Exception($"'{alias}' condition not met within timeout"); // TODO we can do better
+        throw new Exception($"'{alias}' condition not met within timeout"); // TODO return a better exception type
     }
 
 
-    private async Task ConnectClientsAsync(Dictionary<int, TCPClient> clients)
+    private static async Task ConnectClientsAsync(Dictionary<int, TCPClient> clients)
     {
         foreach (var client in clients.Values)
         {
@@ -176,7 +173,7 @@ public class ServerTests : IDisposable
         }
     }
 
-    private async Task ConnectStartClientAsync(TCPClient client)
+    private static async Task ConnectStartClientAsync(TCPClient client)
     {
         await client.Client.ConnectAsync("127.0.0.1", TestPort);
         Log.Debug("Test client connected to {port}", TestPort);
@@ -196,7 +193,7 @@ public class ServerTests : IDisposable
         return new TCPClient(_sut.Services.GetRequiredService<ILogger<TCPClient>>(), client);
     }
 
-    public FakeBackendServer CreateStartBackend(int id, int port)
+    public static FakeBackendServer CreateStartBackend(int id, int port)
     {
         var backend = new FakeBackendServer(id, port);
         backend.Start();
@@ -226,6 +223,8 @@ public class ServerTests : IDisposable
     public void Dispose()
     {
         // TODO dispose backends, clients, IHost
+
+        GC.SuppressFinalize(this);
     }
 
     #endregion Helpers

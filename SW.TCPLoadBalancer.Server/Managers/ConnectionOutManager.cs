@@ -156,5 +156,6 @@ public partial class ConnectionOutManager(IServiceProvider serviceProvider,
         _cancelTokenSrc.Cancel();
         _outClient.DisposeSafely();
         await _closeWait.WaitAsync();
+        GC.SuppressFinalize(this);
     }
 }

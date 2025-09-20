@@ -11,7 +11,5 @@ public class ServerOptions
     public int BackendReconnectWaitMs { get; set; } = 5000;
     public int ReceiveBufferSize { get; set; } = 16384;
     public int SendBufferSize { get; set; } = 16384;
-
     public List<ConnectionDetails> BackendConnections { get; set; } = new();
-    // TODO Max frame send retries for transient errors
 }

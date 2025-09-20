@@ -6,22 +6,15 @@ namespace SW.TCPLoadBalancer.Tests.Integration.Fakes;
 
 public partial class FakeBackendServer
 {
-    public class ClientHandler : IDisposable
+    public class ClientHandler(TcpClient tcpClient, int id) : IDisposable
     {
-        private readonly TcpClient _tcpClient;
-        public int Id { get; private set; }
-        private readonly NetworkStream _stream;
+        private readonly TcpClient _tcpClient = tcpClient;
+        public int Id { get; private set; } = id;
+        private readonly NetworkStream _stream = tcpClient.GetStream();
         private readonly List<byte> _receivedData = new();
-        private object _dataLock = new();
+        private readonly object _dataLock = new();
 
         public bool IsConnected => _tcpClient?.Connected ?? false;
-
-        public ClientHandler(TcpClient tcpClient, int id)
-        {
-            _tcpClient = tcpClient;
-            Id = id;
-            _stream = tcpClient.GetStream();
-        }
 
         public async Task HandleAsync()
         {
@@ -32,7 +25,7 @@ public partial class FakeBackendServer
                 while (_tcpClient.Connected)
                 {
                     string receivedText = "";
-                    var bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
+                    var bytesRead = await _stream.ReadAsync(buffer);
                     if (bytesRead > 0)
                     {
                         receivedText = Encoding.UTF8.GetString(buffer, 0, bytesRead);
@@ -49,7 +42,7 @@ public partial class FakeBackendServer
                     var bufferResponse = Encoding.UTF8.GetBytes(responseTxt);
                     Log.Debug("[FakeBackend-{id}] Responding: '{txt}'", Id, responseTxt);
 
-                    await _stream.WriteAsync(bufferResponse, 0, bufferResponse.Length);
+                    await _stream.WriteAsync(bufferResponse);
                     await _stream.FlushAsync();
                 }
             }
@@ -70,7 +63,7 @@ public partial class FakeBackendServer
             try
             {
                 var data = Encoding.UTF8.GetBytes(message);
-                await _stream.WriteAsync(data, 0, data.Length);
+                await _stream.WriteAsync(data);
                 await _stream.FlushAsync();
             }
             catch (Exception)
@@ -102,6 +95,7 @@ public partial class FakeBackendServer
             _stream?.Dispose();
             _tcpClient?.Close();
             Log.Information("[FakeBackend-{id}] Client disconnecting from backend.", Id);
+            GC.SuppressFinalize(this);
         }
     }
 }

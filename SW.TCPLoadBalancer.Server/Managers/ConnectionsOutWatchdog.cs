@@ -22,11 +22,12 @@ public class ConnectionsOutWatchdog(IServiceProvider serviceProvider,
 
     public async ValueTask DisposeAsync()
     {
-        foreach ((var key, var handler) in _connectionsOutRegistry.ActiveConnections)
+        foreach ((_, var handler) in _connectionsOutRegistry.ActiveConnections)
         {
             await handler.DisposeAsync();
         }
         _connectionsOutRegistry.Clear();
+        GC.SuppressFinalize(this);
     }
 
     public Task StartWatchdogAsync()
