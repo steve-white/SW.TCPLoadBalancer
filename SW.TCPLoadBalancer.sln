@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36408.4
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution-items", "solution-items", "{1FDBBFDC-35E4-4B6D-99C4-2D8E8CD29BF9}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E4F08998-2699-470A-ABD0-9F61927247CD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SW.TCPLoadBalancer.Server", "SW.TCPLoadBalancer.Server\SW.TCPLoadBalancer.Server.csproj", "{F229D52D-BBAC-0C2B-7FE7-24DE9D391302}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SW.TCPLoadBalancer.Tests", "SW.TCPLoadBalancer.Tests\SW.TCPLoadBalancer.Tests.csproj", "{A2BCAB5A-C86A-CE37-6587-2839447FDF95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SW.TCPLoadBalancer.Tests.Integration", "SW.TCPLoadBalancer.Tests.Integration\SW.TCPLoadBalancer.Tests.Integration.csproj", "{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F229D52D-BBAC-0C2B-7FE7-24DE9D391302}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F229D52D-BBAC-0C2B-7FE7-24DE9D391302}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F229D52D-BBAC-0C2B-7FE7-24DE9D391302}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F229D52D-BBAC-0C2B-7FE7-24DE9D391302}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2BCAB5A-C86A-CE37-6587-2839447FDF95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2BCAB5A-C86A-CE37-6587-2839447FDF95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2BCAB5A-C86A-CE37-6587-2839447FDF95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2BCAB5A-C86A-CE37-6587-2839447FDF95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F229D52D-BBAC-0C2B-7FE7-24DE9D391302} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{A2BCAB5A-C86A-CE37-6587-2839447FDF95} = {E4F08998-2699-470A-ABD0-9F61927247CD}
+		{7F0DFD88-1618-4EAB-AFC3-54F1EA06F50F} = {E4F08998-2699-470A-ABD0-9F61927247CD}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A6CB6C36-E43E-48A0-97C9-15E3C28FC043}
+	EndGlobalSection
+EndGlobal
