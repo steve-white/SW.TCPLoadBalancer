@@ -19,15 +19,21 @@ public class ConnectionOutSelector(
 
     public ConnectionDetails? GetAvailableBackendConnectionDetails()
     {
-        // TODO improve this. Don't rely on connectionKey prefix & substring to identify watchdog connections
+        // TODO improve this. Don't rely on connectionKey prefix & substring to identify watchdog connections.
+        // possibly maintain a separate registry of watchdog connections
         var watchdogConnections = _connectionsOutRegistry.ActiveConnections
             .Where(x => x.Value.ConnectionKey!.StartsWith("watchdog-")).ToList();
         if (_connectionsOutRegistry.ActiveConnections.IsEmpty)
             return null;
 
         var index = Environment.TickCount % watchdogConnections.Count;
-        var connectionKey = watchdogConnections.ElementAt(index).Key.Substring(9);
+        var connectionKey = GetBackendConnectionAlias(watchdogConnections.ElementAt(index).Key);
         return _serverOptions.BackendConnections
             .Where(c => c.GetKey() == connectionKey).FirstOrDefault();
+    }
+
+    private static string GetBackendConnectionAlias(string key)
+    {
+        return key.Substring(key.LastIndexOf('-') + 1);
     }
 }

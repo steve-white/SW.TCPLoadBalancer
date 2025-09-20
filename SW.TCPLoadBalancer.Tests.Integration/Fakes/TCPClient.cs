@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SW.TCPLoadBalancer.Tests.Integration.Fakes;
 
-public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient)
+public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient, int id)
 {
     private readonly ILogger<TCPClient> _logger = logger;
     private readonly List<byte> _receivedData = new();
@@ -23,13 +23,17 @@ public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient)
 
     public async Task SendMessageAsync(string message)
     {
+        if (_tcpClient == null || _tcpClient.Client == null) throw new InvalidOperationException("No client connection");
+
+        _logger.LogDebug("[{id} - {ip}] Test client sending: '{txt}'", id,
+            _tcpClient.Client.RemoteEndPoint?.ToString(), message);
         var data = Encoding.UTF8.GetBytes(message);
         await SendAsync(data, 0, data.Length);
     }
 
     public void Stop()
     {
-        Log.Debug("Stopping TCP client");
+        Log.Debug("Stopping Test TCP client");
         _tcpClient?.Close();
     }
 
@@ -59,7 +63,7 @@ public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient)
                     if (bytesRead == 0)
                         break;
 
-                    _logger.LogInformation("[{ip}] Client received: '{txt}'",
+                    _logger.LogDebug("[{id} - {ip}] Test client received: '{txt}'", id,
                         _tcpClient.Client.RemoteEndPoint?.ToString(), Encoding.UTF8.GetString(buffer, 0, bytesRead));
                     lock (_dataLock)
                     {
@@ -69,6 +73,7 @@ public class TCPClient(ILogger<TCPClient> logger, TcpClient tcpClient)
             }
             catch (Exception)
             {
+                _logger.LogError("[{id}] Error in test client read loop", id);
             }
             finally
             {

@@ -1,5 +1,4 @@
-﻿using Serilog;
-using SW.TCPLoadBalancer.Server.Abstractions;
+﻿using SW.TCPLoadBalancer.Server.Abstractions;
 using SW.TCPLoadBalancer.Server.DTOs;
 using System.Net.Sockets;
 
@@ -9,18 +8,19 @@ public static class SocketHelper
 {
     private const int BufferSize = 16384;
 
-    public static async Task ForwardingFramesAsync(FrameState frameState, NetworkStream src, INetworkClient dst)
+    public static async Task ForwardBufferedDataAsync(FrameState frameState, NetworkStream src, INetworkClient dst)
     {
         frameState.Reset();
         byte[] buffer = new byte[BufferSize];
         int bytesRead;
         SendState sendState = new();
+
+        // TODO Use ArrayPool to avoid repeated allocations?
+
         // NB: Closing of the underlying streams/sockets will cause a break from the read loop
-        Log.Debug("{alias} Read ...", src.GetHashCode());
         while ((bytesRead = await src.ReadAsync(buffer)) > 0)
         {
             frameState.ByteCountRemaining = bytesRead;
-            Log.Debug("{alias} Read {count} bytes from source stream: '{txt}'", src.GetHashCode(), bytesRead, System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead));
             sendState.Reset();
 
             await dst.SendAsync(sendState, buffer, bytesRead);
@@ -35,10 +35,7 @@ public static class SocketHelper
                 return;
             }
         }
-
         frameState.SourceClosed = true;
-        Log.Debug("{alias} Read {count}, remain: {rem}", src.GetHashCode(), bytesRead, frameState.ByteCountRemaining);
-
     }
 
     public static async Task SendAsync(SendState sendState, Socket socket, byte[] buffer, int bytesRead)

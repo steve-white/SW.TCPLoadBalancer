@@ -2,7 +2,7 @@
 
 namespace SW.TCPLoadBalancer.Server.Abstractions;
 
-public interface INetworkClient : IAsyncDisposable
+public interface INetworkClient : IDisposable
 {
     Task SendAsync(SendState sendState, byte[] buffer, int bytesRead);
 }

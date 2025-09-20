@@ -11,7 +11,8 @@ public interface IConnectionsRegistry<TManager>
     void Clear();
 }
 
-public class ConnectionsRegistry<TManager>(ILogger<ConnectionsRegistry<TManager>> logger) : IConnectionsRegistry<TManager> where TManager : IConnectionManager
+public class ConnectionsRegistry<TManager>(ILogger<ConnectionsRegistry<TManager>> logger)
+    : IConnectionsRegistry<TManager> where TManager : IConnectionManager
 {
     public ConcurrentDictionary<string, TManager> ActiveConnections { get; } = new();
     private readonly ILogger<ConnectionsRegistry<TManager>> _logger = logger;

@@ -1,6 +1,6 @@
 ﻿namespace SW.TCPLoadBalancer.Server.DTOs;
 
-public class SendState
+public struct SendState
 {
     public int BytesSent { get; set; }
     public Exception? Exception { get; set; }

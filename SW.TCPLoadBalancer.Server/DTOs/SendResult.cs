@@ -1,6 +1,6 @@
 ﻿namespace SW.TCPLoadBalancer.Server.DTOs;
 
-public class SendResult
+public readonly struct SendResult
 {
     public int BytesSent { get; }
     public Exception? Exception { get; }

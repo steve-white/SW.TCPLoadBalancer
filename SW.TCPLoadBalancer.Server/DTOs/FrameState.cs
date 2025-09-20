@@ -1,7 +1,11 @@
 ﻿namespace SW.TCPLoadBalancer.Server.DTOs;
 
-public class FrameState
+public struct FrameState
 {
+    public FrameState()
+    {
+    }
+
     public int ByteCountRemaining { get; set; } = 0;
     public string? SocketError { get; set; }
     public byte[]? BytesRemaining { get; set; }

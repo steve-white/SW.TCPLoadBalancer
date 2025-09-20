@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Nito.AsyncEx;
 using SW.TCPLoadBalancer.Server.Extensions;
 using SW.TCPLoadBalancer.Server.Managers;
 using SW.TCPLoadBalancer.Server.Options;
 using SW.TCPLoadBalancer.Server.Registry;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
@@ -18,21 +20,31 @@ public class TCPServer(ILogger<TCPServer> logger,
     IServiceProvider serviceProvider,
     IConnectionsOutWatchdog connectionsOutManager,
     IConnectionsInRegistry connectionsInRegistry,
+    IConnectionsOutRegistry connectionsOutRegistry,
     IOptions<ServerOptions> serverOptions) : ITCPServer, IAsyncDisposable
 {
     private readonly ILogger<TCPServer> _logger = logger;
     private readonly IServiceProvider _serviceProvider = serviceProvider;
-    private readonly IConnectionsOutWatchdog _connectionsOutManager = connectionsOutManager;
+    private readonly IConnectionsOutWatchdog _connectionsOutWatchDog = connectionsOutManager;
     private readonly IConnectionsInRegistry _connectionsInRegistry = connectionsInRegistry;
+    private readonly IConnectionsOutRegistry _connectionsOutRegistry = connectionsOutRegistry;
     private readonly ServerOptions _serverOptions = serverOptions.Value;
 
     private TcpListener? _listener;
+    private Task? _acceptTask;
+    private CancellationTokenSource? _cancellationTokenSource;
+    private IServiceScope? _serverScope;
+    private readonly ConcurrentBag<Task> _inClientTasks = new();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
-        await _connectionsOutManager.StartWatchdogAsync(); // start async connection watchdog to backend servers
+        _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _serverScope = _serviceProvider.CreateAsyncScope();
+
+        _connectionsOutWatchDog.StartWatchdog(); // start async connection watchdog to backend servers
         _listener = StartListener(); // start listening for incoming connections
-        await AcceptLoopAsync(_listener, cancellationToken); // start accepting incoming connections
+        _acceptTask = AcceptLoopAsync(_listener, _cancellationTokenSource.Token); // start accepting incoming connections
+        return _acceptTask;
     }
 
     private TcpListener StartListener()
@@ -58,20 +70,21 @@ public class TCPServer(ILogger<TCPServer> logger,
 
     private async Task AcceptLoopAsync(TcpListener listener, CancellationToken stopToken)
     {
-        _ = (IPEndPoint)listener.LocalEndpoint;
         while (!stopToken.IsCancellationRequested)
         {
             try
             {
                 TcpClient? tcpClient = await listener.AcceptTcpClientAsync(stopToken);
                 tcpClient.SetOptions(_serverOptions);
-
-                var inClientHandler = _serviceProvider.GetRequiredService<ConnectionInManager>();
-                _ = inClientHandler.StartConnectionTasksAsync(tcpClient);
+                var inClientHandler = _serverScope!.ServiceProvider.GetRequiredService<IConnectionInManager>();
+                _inClientTasks.Add(inClientHandler.StartConnectionTasksAsync(_serverScope, tcpClient)); // handler manages its own lifecycle
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Problem accepting connection");
+                if (!stopToken.IsCancellationRequested)
+                {
+                    _logger.LogError(ex, $"Problem accepting connection");
+                }
             }
         }
     }
@@ -80,22 +93,46 @@ public class TCPServer(ILogger<TCPServer> logger,
     {
         try
         {
+            if (_cancellationTokenSource != null
+                && !_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.CancelDispose();
             _listener?.Stop();
-            await CloseConnectionsInAsync();
-            await _connectionsOutManager.DisposeAsync();
+
+            await _acceptTask.WaitForCompletionAsync();
+            await _connectionsOutWatchDog.DisposeAsync();
+
+            CloseConnectionsIn();
+            CloseConnectionsOut();
+            await _inClientTasks.WhenAll();
+            _inClientTasks.Clear();
+            _serverScope?.Dispose();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error stopping the listener.");
         }
+        finally
+        {
+            _cancellationTokenSource?.Dispose();
+        }
         GC.SuppressFinalize(this);
     }
 
-    public async Task CloseConnectionsInAsync()
+    private void CloseConnectionsOut()
+    {
+        foreach ((_, var connection) in _connectionsOutRegistry.ActiveConnections)
+        {
+            connection.Dispose();
+        }
+        _connectionsOutRegistry.Clear();
+    }
+
+    private void CloseConnectionsIn()
     {
         foreach ((_, var connection) in _connectionsInRegistry.ActiveConnections)
         {
-            await connection.DisposeAsync();
+            connection.Dispose();
         }
+        _connectionsInRegistry.Clear();
     }
 }

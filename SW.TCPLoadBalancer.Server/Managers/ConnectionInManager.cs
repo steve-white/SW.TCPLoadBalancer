@@ -10,33 +10,35 @@ using System.Net.Sockets;
 
 namespace SW.TCPLoadBalancer.Server.Managers;
 
-public interface IConnectionInManager : IConnectionManager { }
+public interface IConnectionInManager : IConnectionManager
+{
+    Task StartConnectionTasksAsync(IServiceScope serverScope, TcpClient tcpClient);
+}
 
 public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
-    IConnectionsOutWatchdog connectionsOutManager,
     IConnectionOutSelector connectionOutSelector,
-    IServiceProvider serviceProvider,
     ILogger<ConnectionInManager> logger) : IConnectionInManager
 {
     private readonly IConnectionsInRegistry _connectionsInRegistry = connectionsInRegistry;
-    private readonly IConnectionsOutWatchdog _connectionssOutManager = connectionsOutManager;
     private readonly IConnectionOutSelector _connectionOutSelector = connectionOutSelector;
-    private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly ILogger<ConnectionInManager> _logger = logger;
+    private readonly CancellationTokenSource _cancelTokenSrc = new();
+    private readonly AsyncManualResetEvent _closeWait = new(false);
+    private IServiceScope? _connectionInScope;
     private TcpClient? _tcpClient;
     private string? _remoteEndpoint;
-    private readonly CancellationTokenSource _cancelTokenSrc = new();
-    private readonly AsyncAutoResetEvent _closeWait = new(false);
+    private int _disposed = 0;
 
     public string ConnectionKey => _remoteEndpoint!;
 
-    public async Task StartConnectionTasksAsync(TcpClient tcpClient)
+    public async Task StartConnectionTasksAsync(IServiceScope serverScope, TcpClient tcpClient) // TODO decouple TcpClient
     {
+        _connectionInScope = serverScope.ServiceProvider.CreateScope();
         _tcpClient = tcpClient;
         try
         {
-            _remoteEndpoint = tcpClient.Client.GetSocketKey(); // can throw disposed
-            _logger.LogDebug("[{alias}] Incoming client connection", _remoteEndpoint);
+            _remoteEndpoint = tcpClient.Client.GetRemoteSocketKey(); // can throw disposed
+            _logger.LogInformation("[{alias}] Incoming client connection", _remoteEndpoint);
             _connectionsInRegistry.AddConnection(_remoteEndpoint, this);
 
             await StartReadAsync(tcpClient);
@@ -48,18 +50,19 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         finally
         {
             _closeWait.Set();
-            await DisposeAsync();
+            Dispose();
         }
     }
 
-
-    public ConnectionOutManager CreateConnectionOutManager(ConnectionDetails backendConnectionDetails, string connectionSuffix)
+    public IConnectionOutManager CreateConnectionOutManager(ConnectionDetails backendConnectionDetails, string connectionSuffix)
     {
-        var outClientHandler = _serviceProvider.GetRequiredService<ConnectionOutManager>();
-        _ = outClientHandler.StartConnectionMonitorAsync(backendConnectionDetails, isWatchDog: false, connectionSuffix); // handler manages its own lifecycle
+        var outClientHandler = _connectionInScope!.ServiceProvider.GetRequiredService<IConnectionOutManager>();
+        outClientHandler.Initialise(backendConnectionDetails, isWatchDog: false, connectionSuffix);
+        outClientHandler.AttachClientConnection(this);
+
+        _ = outClientHandler.StartConnectionMonitorAsync(); // handler manages its own lifecycle
         return outClientHandler;
     }
-
 
     private async Task StartReadAsync(TcpClient tcpClient)
     {
@@ -73,26 +76,32 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
                 var backendConnectionDetails = _connectionOutSelector.GetAvailableBackendConnectionDetails();
                 if (backendConnectionDetails != null)
                 {
-                    var connectionSuffix = tcpClient.Client.GetSocketKey();
+                    var connectionSuffix = tcpClient.Client.GetLocalSocketKey();
                     var outConnection = CreateConnectionOutManager(backendConnectionDetails, connectionSuffix);
-                    outConnection.AttachClientConnection(this);
-                    using var stream = tcpClient.GetStream();
-
-                    await SocketHelper.ForwardingFramesAsync(frameState, stream, outConnection);
-
-                    if (frameState.SocketError != null)
+                    try
                     {
-                        _logger.LogError("[{alias}] Error sending bytes '{socketErr}'. Remaining bytes lost {count}",
-                            _remoteEndpoint, frameState.SocketError, frameState.ByteCountRemaining);
-                        // TODO: try to resend remaining bytes from frameState on next available connection.
-                        // Run out of time for this now.
+                        using (var stream = tcpClient.GetStream())
+                        {
+                            await SocketHelper.ForwardBufferedDataAsync(frameState, stream, outConnection);
+                        }
+                        if (frameState.SocketError != null)
+                        {
+                            _logger.LogError("[{alias}] Error sending bytes due to error: {socketErr}. Remaining bytes lost {count}",
+                                _remoteEndpoint, frameState.SocketError, frameState.ByteCountRemaining);
+                            // TODO try to resend remaining bytes from frameState on next available connection. Run out of time for this now...
 
-                        // Create a new connection to backend on next loop
+                            // Create a new connection to an active backend on next loop
+                        }
+                        if (frameState.SourceClosed)
+                        {
+                            _logger.LogError("[{alias}] Client connection closed, returning", _remoteEndpoint);
+                            _cancelTokenSrc.CancelDispose();
+                        }
                     }
-                    if (frameState.SourceClosed)
+                    finally
                     {
-                        _logger.LogError("[{alias}] Client connection closed, returning", _remoteEndpoint);
-                        _cancelTokenSrc.Cancel();
+                        outConnection.DetachClientConnection();
+                        frameState.Reset();
                     }
                 }
                 else
@@ -104,14 +113,16 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{alias}] Error in read loop for client connection - {Message}", _remoteEndpoint, ex.Message);
+            _logger.LogError("[{alias}] Error in read loop for client connection - {Message}", _remoteEndpoint, ex.Message);
         }
         _logger.LogDebug("[{alias}] Read loop ended for client", _remoteEndpoint);
     }
 
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
-        _cancelTokenSrc.Cancel();
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1) return;
+
+        _cancelTokenSrc.CancelDispose();
         try
         {
             _tcpClient?.Close();
@@ -124,7 +135,8 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         {
             _connectionsInRegistry.RemoveConnection(_remoteEndpoint);
         }
-        await _closeWait.WaitAsync();
+        _connectionInScope?.Dispose();
+        _closeWait.Wait();
         GC.SuppressFinalize(this);
     }
 
@@ -140,7 +152,7 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         {
             _logger.LogError(sendState.Exception, "{alias} Error sending bytes to client: {Message}. Remaining bytes lost {count}",
                 _remoteEndpoint, sendState.Exception.Message, bytesRead - sendState.BytesSent);
-            await DisposeAsync(); // close connection on error
+            Dispose(); // close connection on error
         }
     }
 }

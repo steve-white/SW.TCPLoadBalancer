@@ -12,6 +12,7 @@ public class ServerWorker(ILogger<ServerWorker> logger,
     {
         try
         {
+            _logger.LogInformation("--------- Starting TCPLoadBalancer ---------");
             return _server.StartAsync(cancelToken);
         }
         catch (Exception ex)
@@ -20,5 +21,4 @@ public class ServerWorker(ILogger<ServerWorker> logger,
             throw;
         }
     }
-    // TODO validate shutdown
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using SW.TCPLoadBalancer.Server.Helpers;
 using SW.TCPLoadBalancer.Server.Managers;
 using SW.TCPLoadBalancer.Server.Options;
 using SW.TCPLoadBalancer.Server.Registry;
@@ -21,13 +22,14 @@ public static class ServiceExtensions
             .ValidateOnStart();
 
         services.AddSingleton<ITCPServer, TCPServer>();
-        services.AddSingleton<IConnectionsOutWatchdog, ConnectionsOutWatchdog>();
+        services.AddScoped<IConnectionsOutWatchdog, ConnectionsOutWatchdog>();
         services.AddSingleton<IConnectionOutSelector, ConnectionOutSelector>();
         services.AddSingleton<IConnectionsInRegistry, ConnectionsInRegistry>();
         services.AddSingleton<IConnectionsOutRegistry, ConnectionsOutRegistry>();
-        services.AddTransient<ConnectionInManager>();
-        services.AddTransient<ConnectionOutManager>();
-        services.AddTransient<ILogNetworkSend, NetworkSendLog>();
+
+        services.AddTransient<IConnectionInManager, ConnectionInManager>(); // TODO: change to scoped & track
+        services.AddScoped<IConnectionOutManager, ConnectionOutManager>();
+        services.AddScoped<ILogNetworkSend, NetworkSendLog>();
 
     }
 }

@@ -4,17 +4,23 @@ namespace SW.TCPLoadBalancer.Server.Extensions;
 
 public static class SocketExtensions
 {
-    public static string GetSocketKey(this Socket socket)
+    public static string GetRemoteSocketKey(this Socket socket)
     {
         // Can throw disposed
         return socket.RemoteEndPoint?.ToString() ?? Guid.NewGuid().ToString();
     }
 
-    public static void DisposeSafely(this TcpClient? outClient)
+    public static string GetLocalSocketKey(this Socket socket)
+    {
+        // Can throw disposed
+        return socket.LocalEndPoint?.ToString() ?? Guid.NewGuid().ToString();
+    }
+
+    public static void CloseSafely(this TcpClient? outClient)
     {
         try
         {
-            outClient?.Dispose();
+            outClient?.Close();
         }
         catch (Exception) { }
     }
