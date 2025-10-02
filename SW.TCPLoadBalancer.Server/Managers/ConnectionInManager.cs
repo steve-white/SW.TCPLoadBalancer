@@ -126,6 +126,7 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
         try
         {
             _tcpClient?.Close();
+            _tcpClient?.Dispose();
         }
         catch (Exception ex)
         {
@@ -136,8 +137,7 @@ public class ConnectionInManager(IConnectionsInRegistry connectionsInRegistry,
             _connectionsInRegistry.RemoveConnection(_remoteEndpoint);
         }
         _connectionInScope?.Dispose();
-        _closeWait.Wait();
-        GC.SuppressFinalize(this);
+        _closeWait.Wait(); // TODO use Async version
     }
 
     public async Task SendAsync(SendState sendState, byte[] buffer, int bytesRead)
