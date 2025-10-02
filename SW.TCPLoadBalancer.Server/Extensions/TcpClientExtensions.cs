@@ -7,6 +7,8 @@ public static class TcpClientExtensions
 {
     public static void SetOptions(this TcpClient client, ServerOptions options)
     {
+        // client.Client.IOControl
+        // TODO set keepalive?
         client.ReceiveTimeout = options.ReceiveTimeoutMs;
         client.SendTimeout = options.SendTimeoutMs;
         client.ReceiveBufferSize = options.ReceiveBufferSize;
