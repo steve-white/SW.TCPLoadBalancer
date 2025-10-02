@@ -28,7 +28,7 @@ public static class SocketHelper
             if (sendState.Exception != null)
             {
                 frameState.SocketError = sendState.Exception.Message;
-
+                
                 byte[] newBuffer = new byte[frameState.ByteCountRemaining];
                 Array.Copy(buffer, sendState.BytesSent, newBuffer, 0, frameState.ByteCountRemaining);
                 frameState.BytesRemaining = buffer;

@@ -325,7 +325,6 @@ public class ServerTests : IDisposable
         _fixture.CloseBackends();
         _fixture.CloseTestClients();
         _fixture.CloseSut();
-        GC.SuppressFinalize(this);
     }
 
     #endregion Helpers

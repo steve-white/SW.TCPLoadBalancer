@@ -8,6 +8,7 @@ using SW.TCPLoadBalancer.Server.Registry;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime;
 
 namespace SW.TCPLoadBalancer.Server;
 
@@ -38,6 +39,9 @@ public class TCPServer(ILogger<TCPServer> logger,
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        _logger.LogDebug("Server GC: " + GCSettings.IsServerGC);
+        _logger.LogDebug("Latency Mode: " + GCSettings.LatencyMode);
+
         _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _serverScope = _serviceProvider.CreateAsyncScope();
 
@@ -115,7 +119,6 @@ public class TCPServer(ILogger<TCPServer> logger,
         {
             _cancellationTokenSource?.Dispose();
         }
-        GC.SuppressFinalize(this);
     }
 
     private void CloseConnectionsOut()

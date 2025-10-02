@@ -33,7 +33,6 @@ public class ServerFixture : IDisposable
         CloseBackends();
         CloseTestClients();
         CloseSut();
-        GC.SuppressFinalize(this);
     }
 
     internal void CloseBackends()

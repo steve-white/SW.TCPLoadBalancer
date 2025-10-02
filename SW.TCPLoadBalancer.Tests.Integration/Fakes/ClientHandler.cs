@@ -103,7 +103,6 @@ public class ClientHandler(TcpClient tcpClient, int id, string clientKey) : IDis
             Log.Error(ex, "[FakeBackend-{id}] Error closing client", Id);
         }
 
-        GC.SuppressFinalize(this);
     }
 }
 

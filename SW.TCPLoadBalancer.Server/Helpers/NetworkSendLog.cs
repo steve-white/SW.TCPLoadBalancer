@@ -21,6 +21,5 @@ public class NetworkSendLog(ILogger<NetworkSendLog> log) : INetworkClient, ILogN
     public void Dispose()
     {
         log.LogDebug("Dispose noop client");
-        GC.SuppressFinalize(this);
     }
 }

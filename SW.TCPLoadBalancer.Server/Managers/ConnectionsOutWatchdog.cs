@@ -36,7 +36,6 @@ public class ConnectionsOutWatchdog(IServiceProvider serviceProvider,
         _logger.LogDebug("Watchdog: all tasks complete");
 
         _serviceScope?.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     public void StartWatchdog()
