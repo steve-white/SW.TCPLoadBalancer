@@ -138,7 +138,10 @@ public class ConnectionOutManager(ILogNetworkSend detachedClientLogger,
         catch (Exception ex)
         {
             _logger.LogError("{alias} Error in read loop for backend connection - {Message}", Alias, ex.Message);
-            _cancelTokenSrc.CancelDispose();
+            if (!isWatchDog)
+            {
+                _cancelTokenSrc.CancelDispose();
+            }
         }
 
     }
@@ -194,10 +197,10 @@ public class ConnectionOutManager(ILogNetworkSend detachedClientLogger,
         _logger.LogDebug("[{alias}] {hc} Disposing connection out manager", this.GetHashCode(), _backendConnectionDetails!.GetKey());
         _cancelTokenSrc.CancelDispose();
         _outClientInitWait.Set();
+
         _outClient.CloseSafely();
-        _closeWait.Wait();
+        _closeWait.Wait(); // TODO use Async version
         _logger.LogDebug("[{alias}] {hc} Disposed connection out manager", this.GetHashCode(), _backendConnectionDetails!.GetKey());
-        GC.SuppressFinalize(this);
     }
 
     public void DetachClientConnection()

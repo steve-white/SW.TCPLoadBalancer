@@ -23,7 +23,7 @@ public class ConnectionOutSelector(
         // possibly maintain a separate registry of watchdog connections
         var watchdogConnections = _connectionsOutRegistry.ActiveConnections
             .Where(x => x.Value.ConnectionKey!.StartsWith("watchdog-")).ToList();
-        if (_connectionsOutRegistry.ActiveConnections.IsEmpty)
+        if (watchdogConnections is { Count: 0})
             return null;
 
         var index = Environment.TickCount % watchdogConnections.Count;
